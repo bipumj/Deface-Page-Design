@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>System Compromised</title>
+  <meta name="description" content="Decorative Matrix-style 'hacked' deface page demo." />
+
+  <style>
+    /* =====================================================
+       THEME TOKENS
+       --accent is overwritten at runtime from CONFIG below.
+       ===================================================== */
+    :root {
+      --accent: #00ff66;
+      --text: #d8ffe6;
+      --glitch-a: #ff2a6d;
+      --glitch-b: #00e5ff;
+      --bg: #000;
+    }
+
+    /* ----- No-scroll base ----- */
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    body {
+      font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, "Courier New", monospace;
+      color: var(--text);
+    }
+
+    /* Make sure the [hidden] attribute always wins over author display rules */
+    [hidden] {
+      display: none !important;
+    }
+
+    /* ----- Layer 0: Matrix rain canvas ----- */
+    #matrix {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      z-index: 0;
+    }
+
+    /* ----- Layer 1: vignette (darkens edges, keeps centre readable) ----- */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 35%, rgba(0, 0, 0, 0.75) 100%);
+    }
+
+    /* ----- Layer 3: subtle CRT scanlines over everything ----- */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.035) 0 1px,
+        transparent 1px 3px
+      );
+    }
+
+    /* ----- Layer 2: foreground stage (fixed, flex-centred, never scrolls) ----- */
+    .stage {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      padding: 2vh 2vw;
+      overflow: hidden;
+    }
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(10px, 2.6vh, 28px);
+      max-width: min(94vw, 920px);
+      padding: clamp(14px, 3vh, 36px) clamp(16px, 4vw, 48px);
+      text-align: center;
+      /* Soft dark halo behind the content so text stays legible over the rain */
+      background: radial-gradient(
+        ellipse at center,
+        rgba(0, 0, 0, 0.72) 0%,
+        rgba(0, 0, 0, 0.45) 60%,
+        rgba(0, 0, 0, 0) 100%
+      );
+    }
+
+    /* ----- Hacker avatar ----- */
+    .avatar {
+      position: relative;
+      margin: 0;
+      flex-shrink: 0;
+      width: clamp(56px, min(16vh, 16vw), 160px);
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid var(--accent);
+      background: #02120a;
+      box-shadow:
+        0 0 6px var(--accent),
+        0 0 22px color-mix(in srgb, var(--accent) 55%, transparent),
+        inset 0 0 16px color-mix(in srgb, var(--accent) 40%, transparent);
+    }
+
+    .avatar img,
+    .avatar svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Tiny scanline texture over the photo for a "monitor" feel */
+    .avatar::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      pointer-events: none;
+      background: repeating-linear-gradient(to bottom, rgba(14, 0, 0, 0.25) 0 1px, transparent 1px 3px);
+    }
+
+    /* Fallback SVG colouring (driven by the accent variable) */
+    .avatar .edge {
+      stroke: var(--accent);
+      stroke-width: 2;
+    }
+
+    .avatar .eyes {
+      fill: var(--accent);
+      filter: drop-shadow(0 0 4px var(--accent));
+    }
+
+    .avatar .deco {
+      stroke: var(--accent);
+      stroke-opacity: 0.35;
+      stroke-width: 1;
+    }
+
+    /* ----- Headline with neon glow ----- */
+    .headline {
+      position: relative;
+      margin: 0;
+      font-weight: 900;
+      font-size: clamp(2rem, min(10vw, 13vh), 7rem);
+      line-height: 0.98;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      overflow-wrap: anywhere;
+      text-shadow:
+        0 0 2px var(--accent),
+        0 0 10px color-mix(in srgb, var(--accent) 85%, transparent),
+        0 0 24px color-mix(in srgb, var(--accent) 60%, transparent),
+        0 0 52px color-mix(in srgb, var(--accent) 35%, transparent);
+      animation: flicker 4s infinite;
+    }
+
+    /* Glitch layers: duplicate the headline text, offset and clipped */
+    .headline::before,
+    .headline::after {
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      text-shadow: none;
+    }
+
+    .headline::before {
+      color: var(--glitch-a);
+      animation: glitch-a 3.2s infinite steps(1, end);
+    }
+
+    .headline::after {
+      color: var(--glitch-b);
+      animation: glitch-b 3.2s infinite steps(1, end);
+    }
+
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      3%       { opacity: 0.82; }
+      4%       { opacity: 1; }
+      47%      { opacity: 1; }
+      48%      { opacity: 0.6; }
+      49%      { opacity: 1; }
+      73%      { opacity: 0.9; }
+      74%      { opacity: 1; }
+    }
+
+    @keyframes glitch-a {
+      0%   { clip-path: inset(0 0 100% 0); transform: translate(0); }
+      8%   { clip-path: inset(12% 0 70% 0); transform: translate(-4px, 0); }
+      10%  { clip-path: inset(60% 0 20% 0); transform: translate(4px, 0); }
+      12%  { clip-path: inset(0 0 100% 0); transform: translate(0); }
+      100% { clip-path: inset(0 0 100% 0); transform: translate(0); }
+    }
+
+    @keyframes glitch-b {
+      0%   { clip-path: inset(100% 0 0 0); transform: translate(0); }
+      5%   { clip-path: inset(40% 0 35% 0); transform: translate(3px, 0); }
+      7%   { clip-path: inset(80% 0 5% 0); transform: translate(-3px, 0); }
+      9%   { clip-path: inset(100% 0 0 0); transform: translate(0); }
+      100% { clip-path: inset(100% 0 0 0); transform: translate(0); }
+    }
+
+    /* ----- Supporting text ----- */
+    .sub {
+      margin: 0;
+      max-width: 60ch;
+      padding: 0.5em 0.9em;
+      border-radius: 4px;
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+      background: rgba(0, 0, 0, 0.6);
+      font-size: clamp(0.85rem, min(2.2vw, 2.6vh), 1.1rem);
+      line-height: 1.55;
+      color: var(--text);
+      text-shadow: 0 0 6px #000;
+    }
+
+    /* ----- Decorative status line ----- */
+    .status {
+      margin: 0;
+      font-size: clamp(0.7rem, 1.6vh, 0.85rem);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: color-mix(in srgb, var(--accent) 85%, white);
+    }
+
+    .cursor {
+      display: inline-block;
+      margin-left: 0.25em;
+      animation: blink 1s steps(1, end) infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    /* ----- ESCAPE button: red glowing border, blinking text ----- */
+    .escape-btn {
+      margin-top: clamp(8px, 2vh, 20px);
+      padding: 0.7em 2.2em;
+      font: inherit;
+      font-weight: 700;
+      font-size: clamp(0.85rem, 2vh, 1.05rem);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: #ff1a1a;
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #ff1a1a;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow:
+        0 0 6px #ff1a1a,
+        0 0 16px rgba(255, 26, 26, 0.7),
+        inset 0 0 10px rgba(255, 26, 26, 0.45);
+      animation: border-glow 1.6s ease-in-out infinite;
+    }
+
+    .escape-btn .escape-text {
+      display: inline-block;
+      text-shadow: 0 0 8px rgba(255, 26, 26, 0.9);
+      animation: blink 1s steps(1, end) infinite;
+    }
+
+    .escape-btn:hover,
+    .escape-btn:focus-visible {
+      background: rgba(255, 26, 26, 0.15);
+      outline: none;
+    }
+
+    @keyframes border-glow {
+      0%, 100% {
+        box-shadow:
+          0 0 4px #ff1a1a,
+          0 0 10px rgba(255, 26, 26, 0.55),
+          inset 0 0 6px rgba(255, 26, 26, 0.35);
+      }
+      50% {
+        box-shadow:
+          0 0 10px #ff1a1a,
+          0 0 28px rgba(255, 26, 26, 0.95),
+          0 0 48px rgba(255, 26, 26, 0.5),
+          inset 0 0 16px rgba(255, 26, 26, 0.6);
+      }
+    }
+
+    /* ----- Short / wide viewports (e.g. phone landscape) ----- */
+    @media (max-height: 520px) {
+      .status { display: none; }
+      .sub { font-size: 0.8rem; line-height: 1.4; }
+    }
+
+    /* ----- Respect user motion preferences ----- */
+    @media (prefers-reduced-motion: reduce) {
+      .headline,
+      .headline::before,
+      .headline::after,
+      .cursor,
+      .escape-btn,
+      .escape-btn .escape-text {
+        animation: none !important;
+      }
+
+      .headline::before,
+      .headline::after {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+   <!-- Background: Matrix rain (decorative, hidden from assistive tech) -->
+  <canvas id="matrix" aria-hidden="true"></canvas>
+
+  <!-- Foreground content -->
+  <main class="stage">
+    <section class="panel" aria-labelledby="alert-title">
+
+      <!-- Hacker avatar: real photo if hacker_photo_url is set, otherwise the SVG silhouette -->
+      <figure class="avatar">
+        <img id="avatar-img" alt="Hooded hacker avatar" hidden referrerpolicy="no-referrer" />
+
+        <svg id="avatar-fallback" viewBox="0 0 200 200" role="img" aria-label="Anonymous hooded figure silhouette">
+          <defs>
+            <radialGradient id="avatar-bg" cx="50%" cy="40%" r="60%">
+              <stop offset="0" stop-color="#0c3a1f" />
+              <stop offset="1" stop-color="#02100a" />
+            </radialGradient>
+          </defs>
+          <rect width="200" height="200" fill="url(#avatar-bg)" />
+          <!-- Shoulders -->
+          <path d="M28 200 C30 158 58 138 100 138 C142 138 170 158 172 200 Z" fill="#06200f" />
+          <!-- Hood -->
+          <path class="edge" d="M100 18 C62 18 46 58 46 100 C46 122 54 136 66 144 L134 144 C146 136 154 122 154 100 C154 58 138 18 100 18 Z" fill="#041a0d" />
+          <!-- Face shadow -->
+          <path d="M100 42 C78 42 66 66 66 96 C66 112 72 124 100 124 C128 124 134 112 134 96 C134 66 122 42 100 42 Z" fill="#000" />
+          <!-- Glowing eyes -->
+          <g class="eyes">
+            <rect x="80" y="90" width="14" height="4" rx="2" />
+            <rect x="106" y="90" width="14" height="4" rx="2" />
+          </g>
+          <!-- Decorative code lines -->
+          <path class="deco" d="M40 170 H70 M130 170 H160 M36 182 H64 M136 182 H164" fill="none" />
+        </svg>
+      </figure>
+
+      <h1 id="alert-title" class="headline" data-text="YOU ARE HACKED">YOU ARE HACKED</h1>
+
+      <p id="sub-text" class="sub">Access to this system has been compromised. All activity is being monitored.</p>
+
+      <p class="status">
+        Status: <span>Session locked BY Team Delta 70</span> 
+        <br> <br>
+        Powered By: <span>AWS</span><span class="cursor" aria-hidden="true">_</span>
+      </p>
+
+      <button type="button" class="escape-btn" id="escape-btn" aria-label="Escape">
+        <span class="escape-text">ESCAPE</span>
+           </button>
+
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      /* =====================================================
+         CONFIG — edit these values to customise the page.
+         ===================================================== */
+      const CONFIG = {
+        headline: 'YOU ARE HACKED BY ~m394r4pT3R~',
+        subText: 'Access to this system has been compromised. All activity is being monitored.',
+        photoUrl: 'https://i.imgur.com/RqbgyPL.jpeg',                 // e.g. 'https://example.com/photo.jpg'; empty = built-in SVG silhouette
+        photoAlt: 'Hooded hacker avatar',
+        accentColor: '#00ff66',       // headline, avatar ring, glows
+        rainColor: '#00ff66'          // Matrix rain glyph colour
+      };
+
+      /* ---------- Apply text & theme ---------- */
+      const headline = document.getElementById('alert-title');
+      headline.textContent = CONFIG.headline;
+      headline.dataset.text = CONFIG.headline;
+      document.getElementById('sub-text').textContent = CONFIG.subText;
+      document.documentElement.style.setProperty('--accent', CONFIG.accentColor);
+
+      /* ---------- Avatar with graceful fallback ---------- */
+      const avatarImg = document.getElementById('avatar-img');
+      const avatarFallback = document.getElementById('avatar-fallback');
+      avatarImg.alt = CONFIG.photoAlt;
+
+      if (CONFIG.photoUrl) {
+        avatarImg.addEventListener('load', () => {
+          avatarImg.hidden = false;
+          avatarFallback.hidden = true;
+        });
+        avatarImg.addEventListener('error', () => {
+          // Keep the SVG silhouette if the photo can't be loaded
+          avatarImg.hidden = true;
+          avatarFallback.hidden = false;
+        });
+        avatarImg.src = CONFIG.photoUrl;
+      }
+
+      /* =====================================================
+         MATRIX RAIN
+         ===================================================== */
+      const canvas = document.getElementById('matrix');
+      const ctx = canvas.getContext('2d');
+
+      const RAIN_CHARS = '0 1 2 3 4 5 6 7 8 9A B C D E F < >'; //アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン
+      const HEAD_COLOR = '#eafff1';              // bright leading glyph
+      const FRAME_INTERVAL = 1000 / 40;          // cap rain at ~30 fps for smooth, low CPU use
+      const reduceMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      let dpr = 1;
+      let viewW = 0;
+      let viewH = 0;
+      let fontSize = 18;
+      let cols = 0;
+      let drops = [];            // per-column head row (float; may be negative = off-screen)
+      let rafId = null;
+      let lastTime = 0;
+
+      /** Size the canvas to the viewport with devicePixelRatio support. */
+      function resizeCanvas() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        viewW = window.innerWidth;
+        viewH = window.innerHeight;
+
+        canvas.width = Math.round(viewW * dpr);
+        canvas.height = Math.round(viewH * dpr);
+        canvas.style.width = viewW + 'px';
+        canvas.style.height = viewH + 'px';
+
+        // Setting canvas.width resets context state, so configure after resizing
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        fontSize = viewW < 640 ? 14 : 18;
+        ctx.font = fontSize + 'px ui-monospace, Menlo, Consolas, monospace';
+        ctx.textBaseline = 'top';
+
+        // Keep existing column positions where possible; start new columns above the screen
+        const newCols = Math.ceil(viewW / fontSize);
+        const oldDrops = drops;
+        drops = Array.from({ length: newCols }, (_, i) =>
+          oldDrops[i] !== undefined ? oldDrops[i] : -Math.random() * (viewH / fontSize)
+        );
+        cols = newCols;
+
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, viewW, viewH);
+      }
+
+      /** Advance the rain by one frame. */
+      function drawFrame() {
+        // Translucent black overlay creates the fading trail
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+        ctx.fillRect(0, 0, viewW, viewH);
+
+        for (let i = 0; i < cols; i++) {
+          const row = drops[i];
+          const x = i * fontSize;
+
+          // Skip drawing for columns currently above the screen (cheap)
+          if (row >= -1) {
+            const y = row * fontSize;
+
+            // Previous head becomes a rain-coloured trail glyph
+            if (row >= 1 && y - fontSize < viewH) {
+              ctx.fillStyle = CONFIG.rainColor;
+              ctx.fillText(randomChar(), x, y - fontSize);
+            }
+
+            // Current head is drawn brighter
+            if (y < viewH) {
+              ctx.fillStyle = HEAD_COLOR;
+              ctx.fillText(randomChar(), x, y);
+            }
+          }
+
+          // Reset to the top occasionally once a column leaves the screen
+          if (row * fontSize > viewH && Math.random() > 0.975) {
+            drops[i] = -Math.random() * 20;
+          } else {
+            drops[i] = row + 0.25 + Math.random() * 0.5;
+          }
+        }
+      }
+
+      function randomChar() {
+        return RAIN_CHARS.charAt(Math.floor(Math.random() * RAIN_CHARS.length));
+      }
+
+      /** rAF loop with frame-rate cap. */
+      function loop(now) {
+        rafId = requestAnimationFrame(loop);
+        if (now - lastTime < FRAME_INTERVAL - 1) return;
+        lastTime = now;
+        drawFrame();
+      }
+
+      function startRain() {
+        if (rafId === null) {
+          rafId = requestAnimationFrame(loop);
+        }
+      }
+
+      function stopRain() {
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      }
+
+      /** Reduced-motion: paint one settled frame instead of animating. */
+      function renderStaticRain() {
+        for (let k = 0; k < 60; k++) drawFrame();
+      }
+
+      function applyMotionPreference() {
+        stopRain();
+        if (reduceMotionMQ.matches) {
+          renderStaticRain();
+        } else if (!document.hidden) {
+          startRain();
+        }
+      }
+
+      /* ---------- Events ---------- */
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+        if (reduceMotionMQ.matches) renderStaticRain();
+      });
+
+      // Pause animation when the tab is hidden to avoid wasted CPU
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          stopRain();
+        } else if (!reduceMotionMQ.matches) {
+          startRain();
+        }
+      });
+
+      // React if the user toggles the OS motion setting while the page is open
+      if (typeof reduceMotionMQ.addEventListener === 'function') {
+        reduceMotionMQ.addEventListener('change', applyMotionPreference);
+      }
+
+      /* ---------- ESCAPE button: start background audio (direct file playback) ---------- */
+      const DRIVE_FILE_ID = '1H782qAzuU845UJdJYUrgY-bqNyAZ8GrK';
+
+      // Direct-download forms of the Drive link, tried in order until one plays
+      const AUDIO_SOURCES = [
+        'https://drive.usercontent.google.com/download?id=' + DRIVE_FILE_ID + '&export=download',
+        'https://drive.google.com/uc?export=download&id=' + DRIVE_FILE_ID
+      ];
+
+      const escapeBtn = document.getElementById('escape-btn');
+      const bgAudio = new Audio();
+      bgAudio.loop = true;
+      bgAudio.preload = 'auto';
+      bgAudio.volume = 1;
+
+      let sourceIndex = 0;
+      let audioStarted = false;
+
+      function tryPlay() {
+        bgAudio.src = AUDIO_SOURCES[sourceIndex];
+        const p = bgAudio.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch((err) => {
+            // Autoplay/permission problems are not source problems; real load failures hit the 'error' handler
+            if (err && err.name !== 'NotSupportedError') console.warn('Audio play blocked:', err);
+          });
+        }
+      }
+
+      // If a source can't be loaded, move on to the next; if all fail, stay on the page and allow a retry
+      bgAudio.addEventListener('error', () => {
+        sourceIndex++;
+        if (sourceIndex < AUDIO_SOURCES.length) {
+          tryPlay();
+        } else {
+          console.warn('Background audio could not be loaded from any source.');
+          audioStarted = false;
+          sourceIndex = 0;
+        }
+      });
+
+      escapeBtn.addEventListener('click', () => {
+        if (audioStarted) return;     // start only once; the click is the user gesture browsers require
+        audioStarted = true;
+        tryPlay();
+      });
+
+      /* ---------- ESCAPE button: 'fahhh' sound effect (plays on every click) ---------- */
+      // Optional: set this to a hosted sound file (e.g. 'fahhh.mp3') to use a real recording.
+      // Leave it empty to use the built-in synthesized "fahhh".
+      const FAHHH_SOUND_URL = 'Fahhhh.mp3';
+
+      let fxCtx = null;
+      let fxAudio = null;
+
+      function playSynthFahhh() {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        fxCtx = fxCtx || new AC();
+        if (fxCtx.state === 'suspended') fxCtx.resume();
+
+        const t0 = fxCtx.currentTime;
+        const dur = 1.3;
+
+        const master = fxCtx.createGain();
+        master.gain.setValueAtTime(0.0001, t0);
+        master.gain.exponentialRampToValueAtTime(0.9, t0 + 0.08);
+        master.gain.setValueAtTime(0.9, t0 + 0.55);
+        master.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        master.connect(fxCtx.destination);
+
+        // "F": short burst of high-passed noise
+        const noiseBuf = fxCtx.createBuffer(1, Math.floor(fxCtx.sampleRate * 0.18), fxCtx.sampleRate);
+        const data = noiseBuf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const noise = fxCtx.createBufferSource();
+        noise.buffer = noiseBuf;
+        const hp = fxCtx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 3000;
+        const nGain = fxCtx.createGain();
+        nGain.gain.setValueAtTime(0.35, t0);
+        nGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+        noise.connect(hp).connect(nGain).connect(master);
+        noise.start(t0);
+
+        // "AHHH": sawtooth voice with falling pitch, vibrato and two vowel formants
+        const osc = fxCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(330, t0 + 0.08);
+        osc.frequency.exponentialRampToValueAtTime(210, t0 + dur);
+
+        const vibrato = fxCtx.createOscillator();
+        const vibratoDepth = fxCtx.createGain();
+        vibrato.frequency.value = 5.5;
+        vibratoDepth.gain.value = 6;
+        vibrato.connect(vibratoDepth).connect(osc.frequency);
+
+        const voiceGain = fxCtx.createGain();
+        voiceGain.gain.setValueAtTime(0.0001, t0);
+        voiceGain.gain.setValueAtTime(0.0001, t0 + 0.1);
+        voiceGain.gain.exponentialRampToValueAtTime(1, t0 + 0.2);
+
+        [[800, 1.0], [1200, 0.7], [2800, 0.25]].forEach(([freq, gain]) => {
+          const f = fxCtx.createBiquadFilter();
+          f.type = 'bandpass';
+          f.frequency.value = freq;
+          f.Q.value = 6;
+          const g = fxCtx.createGain();
+          g.gain.value = gain;
+          osc.connect(voiceGain);
+          voiceGain.connect(f).connect(g).connect(master);
+        });
+
+        osc.start(t0 + 0.08);
+        vibrato.start(t0);
+        osc.stop(t0 + dur + 0.05);
+        vibrato.stop(t0 + dur + 0.05);
+      }
+
+      function playFahhh() {
+        if (FAHHH_SOUND_URL) {
+          fxAudio = fxAudio || new Audio(FAHHH_SOUND_URL);
+          fxAudio.currentTime = 0;
+          fxAudio.play().catch(() => playSynthFahhh());
+        } else {
+          playSynthFahhh();
+        }
+      }
+
+      escapeBtn.addEventListener('click', playFahhh);
+
+      /* ---------- Init ---------- */
+      resizeCanvas();
+      applyMotionPreference();
+    })();
+  </script>
+</body>
+</html>
